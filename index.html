@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Registration</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f3f8;
+  margin: 0;
+  padding: 30px;
+}
+
+.container {
+  max-width: 850px;
+  margin: auto;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 3px 15px #0001;
+}
+
+h2 {
+  text-align: center;
+  color: #164b83;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button {
+  padding: 11px 18px;
+  border: none;
+  border-radius: 5px;
+  background: #1769aa;
+  color: white;
+  cursor: pointer;
+}
+
+.delete {
+  background: #d93636;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 25px;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+th {
+  background: #1769aa;
+  color: white;
+}
+
+#message {
+  margin-top: 12px;
+  color: #1769aa;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Student Registration System</h2>
+
+<form id="studentForm">
+
+<input id="full_name"
+placeholder="Student Full Name" required>
+
+<input id="email"
+type="email"
+placeholder="Email Address">
+
+<input id="course"
+placeholder="Course Name">
+
+<button type="submit">Save Student</button>
+
+</form>
+
+<p id="message"></p>
+
+<h3>Registered Students</h3>
+
+<button onclick="loadStudents()">Refresh Data</button>
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Course</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="studentList"></tbody>
+</table>
+
+</div>
+
+<script>
+
+// 1. Supabase Connection
+
+const SUPABASE_URL = "https://iooqbufnqffdmkymiilg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_N-go2PwyZ2LaUQIICiB-CA_3suDsXdA";
+
+const db = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+// 2. Save Student
+
+document.getElementById("studentForm")
+.addEventListener("submit", async function(e) {
+
+  e.preventDefault();
+
+  const full_name =
+    document.getElementById("full_name").value;
+
+  const email =
+    document.getElementById("email").value;
+
+  const course =
+    document.getElementById("course").value;
+
+  const { error } = await db
+    .from("students")
+    .insert([{ full_name, email, course }]);
+
+  if (error) {
+    document.getElementById("message").textContent =
+      "Error: " + error.message;
+    return;
+  }
+
+  document.getElementById("message").textContent =
+    "Student Saved Successfully!";
+
+  this.reset();
+
+  loadStudents();
+
+});
+
+// 3. Display Students
+
+async function loadStudents() {
+
+  const { data, error } = await db
+    .from("students")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) {
+    document.getElementById("message").textContent =
+      "Error: " + error.message;
+    return;
+  }
+
+  const list = document.getElementById("studentList");
+
+  list.innerHTML = "";
+
+  data.forEach(student => {
+
+    const tr = document.createElement("tr");
+
+    [
+      student.id,
+      student.full_name,
+      student.email || "",
+      student.course || ""
+    ].forEach(value => {
+
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.appendChild(td);
+
+    });
+
+    const action = document.createElement("td");
+
+    const btn = document.createElement("button");
+    btn.textContent = "Delete";
+    btn.className = "delete";
+
+    btn.onclick = () => deleteStudent(student.id);
+
+    action.appendChild(btn);
+    tr.appendChild(action);
+
+    list.appendChild(tr);
+
+  });
+
+}
+
+// 4. Delete Student
+
+async function deleteStudent(id) {
+
+  if (!confirm("Delete this student?")) return;
+
+  const { error } = await db
+    .from("students")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  loadStudents();
+
+}
+
+// 5. Load Data when page opens
+
+loadStudents();
+
+</script>
+
+</body>
+</html>
