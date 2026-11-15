@@ -3,21 +3,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Student Registration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Management System</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+* { box-sizing: border-box; }
+
 body {
+  margin: 0;
+  padding: 25px;
   font-family: Arial, sans-serif;
   background: #f0f3f8;
-  margin: 0;
-  padding: 30px;
 }
 
 .container {
-  max-width: 850px;
+  max-width: 900px;
   margin: auto;
   background: white;
   padding: 25px;
@@ -25,42 +27,37 @@ body {
   box-shadow: 0 3px 15px #0001;
 }
 
-h2 {
-  text-align: center;
-  color: #164b83;
-}
+h2 { color: #164b83; }
 
 input {
   width: 100%;
   padding: 12px;
   margin: 8px 0;
-  box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 5px;
 }
 
 button {
   padding: 11px 18px;
-  border: none;
+  border: 0;
   border-radius: 5px;
   background: #1769aa;
   color: white;
   cursor: pointer;
+  margin: 5px 0;
 }
 
-.delete {
-  background: #d93636;
-}
+.logout { background: #d93636; }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 25px;
+  margin-top: 20px;
 }
 
-th, td {
-  padding: 10px;
+td, th {
   border: 1px solid #ddd;
+  padding: 10px;
   text-align: left;
 }
 
@@ -69,31 +66,78 @@ th {
   color: white;
 }
 
-#message {
-  margin-top: 12px;
-  color: #1769aa;
-}
+#message { color: #1769aa; }
+
+.hidden { display: none; }
 
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<!-- LOGIN PAGE -->
 
-<h2>Student Registration System</h2>
+<div class="container" id="loginPage">
+
+<h2>Admin Login</h2>
+
+<p>Student Management System</p>
+
+<form id="loginForm">
+
+<input
+  id="email"
+  type="email"
+  placeholder="Admin Email"
+  required>
+
+<input
+  id="password"
+  type="password"
+  placeholder="Password"
+  required>
+
+<button type="submit">Login</button>
+
+</form>
+
+<p id="loginMessage"></p>
+
+</div>
+
+
+<!-- ADMIN DASHBOARD -->
+
+<div class="container hidden" id="dashboard">
+
+<h2>Student Management Dashboard</h2>
+
+<p id="adminEmail"></p>
+
+<button class="logout" onclick="logout()">
+Logout
+</button>
+
+<hr>
+
+<h3>Register Student</h3>
 
 <form id="studentForm">
 
-<input id="full_name"
-placeholder="Student Full Name" required>
+<input
+  id="full_name"
+  placeholder="Student Full Name"
+  required>
 
-<input id="email"
-type="email"
-placeholder="Email Address">
+<input
+  id="student_email"
+  type="email"
+  placeholder="Student Email">
 
-<input id="course"
-placeholder="Course Name">
+<input
+  id="course"
+  placeholder="Course Name"
+  required>
 
 <button type="submit">Save Student</button>
 
@@ -101,11 +145,14 @@ placeholder="Course Name">
 
 <p id="message"></p>
 
-<h3>Registered Students</h3>
+<h3>Student Records</h3>
 
-<button onclick="loadStudents()">Refresh Data</button>
+<button onclick="loadStudents()">
+Refresh
+</button>
 
 <table>
+
 <thead>
 <tr>
 <th>ID</th>
@@ -117,13 +164,15 @@ placeholder="Course Name">
 </thead>
 
 <tbody id="studentList"></tbody>
+
 </table>
 
 </div>
 
+
 <script>
 
-// 1. Supabase Connection
+// 1. DATABASE CONNECTION
 
 const SUPABASE_URL = "https://iooqbufnqffdmkymiilg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_N-go2PwyZ2LaUQIICiB-CA_3suDsXdA";
@@ -133,7 +182,94 @@ const db = supabase.createClient(
   SUPABASE_KEY
 );
 
-// 2. Save Student
+
+// 2. CHECK LOGIN STATUS
+
+function showLogin() {
+  document.getElementById("loginPage")
+    .classList.remove("hidden");
+
+  document.getElementById("dashboard")
+    .classList.add("hidden");
+}
+
+function showDashboard(user) {
+  document.getElementById("loginPage")
+    .classList.add("hidden");
+
+  document.getElementById("dashboard")
+    .classList.remove("hidden");
+
+  document.getElementById("adminEmail")
+    .textContent = "Logged in: " + user.email;
+
+  loadStudents();
+}
+
+
+// 3. ADMIN LOGIN
+
+document.getElementById("loginForm")
+.addEventListener("submit", async function(e) {
+
+  e.preventDefault();
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await db.auth.signInWithPassword({
+    email: email,
+    password: password
+  });
+
+  if (error) {
+    document.getElementById("loginMessage")
+      .textContent = "Login Failed: " + error.message;
+    return;
+  }
+
+  document.getElementById("loginMessage")
+    .textContent = "";
+
+  showDashboard(data.user);
+
+});
+
+
+// 4. CHECK EXISTING SESSION
+
+async function checkSession() {
+
+  const { data, error } = await db.auth.getSession();
+
+  if (error || !data.session) {
+    showLogin();
+    return;
+  }
+
+  showDashboard(data.session.user);
+}
+
+
+// 5. LOGOUT
+
+async function logout() {
+
+  const { error } = await db.auth.signOut();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  document.getElementById("studentList").innerHTML = "";
+
+  showLogin();
+
+}
+
+
+// 6. SAVE STUDENT
 
 document.getElementById("studentForm")
 .addEventListener("submit", async function(e) {
@@ -141,26 +277,31 @@ document.getElementById("studentForm")
   e.preventDefault();
 
   const full_name =
-    document.getElementById("full_name").value;
+    document.getElementById("full_name").value.trim();
 
   const email =
-    document.getElementById("email").value;
+    document.getElementById("student_email").value.trim();
 
   const course =
-    document.getElementById("course").value;
+    document.getElementById("course").value.trim();
+
+  if (!full_name || !course) {
+    alert("Please enter required details.");
+    return;
+  }
 
   const { error } = await db
     .from("students")
     .insert([{ full_name, email, course }]);
 
   if (error) {
-    document.getElementById("message").textContent =
-      "Error: " + error.message;
+    document.getElementById("message")
+      .textContent = "Error: " + error.message;
     return;
   }
 
-  document.getElementById("message").textContent =
-    "Student Saved Successfully!";
+  document.getElementById("message")
+    .textContent = "Student Saved Successfully!";
 
   this.reset();
 
@@ -168,7 +309,8 @@ document.getElementById("studentForm")
 
 });
 
-// 3. Display Students
+
+// 7. DISPLAY STUDENTS
 
 async function loadStudents() {
 
@@ -178,8 +320,8 @@ async function loadStudents() {
     .order("id", { ascending: false });
 
   if (error) {
-    document.getElementById("message").textContent =
-      "Error: " + error.message;
+    document.getElementById("message")
+      .textContent = "Error: " + error.message;
     return;
   }
 
@@ -199,7 +341,9 @@ async function loadStudents() {
     ].forEach(value => {
 
       const td = document.createElement("td");
+
       td.textContent = value;
+
       tr.appendChild(td);
 
     });
@@ -207,12 +351,14 @@ async function loadStudents() {
     const action = document.createElement("td");
 
     const btn = document.createElement("button");
+
     btn.textContent = "Delete";
-    btn.className = "delete";
+    btn.style.background = "#d93636";
 
     btn.onclick = () => deleteStudent(student.id);
 
     action.appendChild(btn);
+
     tr.appendChild(action);
 
     list.appendChild(tr);
@@ -221,11 +367,14 @@ async function loadStudents() {
 
 }
 
-// 4. Delete Student
+
+// 8. DELETE STUDENT
 
 async function deleteStudent(id) {
 
-  if (!confirm("Delete this student?")) return;
+  if (!confirm("Are you sure you want to delete?")) {
+    return;
+  }
 
   const { error } = await db
     .from("students")
@@ -237,13 +386,16 @@ async function deleteStudent(id) {
     return;
   }
 
+  alert("Student Deleted Successfully!");
+
   loadStudents();
 
 }
 
-// 5. Load Data when page opens
 
-loadStudents();
+// 9. START WEBSITE
+
+checkSession();
 
 </script>
 
